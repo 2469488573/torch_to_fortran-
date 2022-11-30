@@ -1,0 +1,10 @@
+2022-11-27今天晚上我写了一个program和module ，然后帮他们一起变异出来，发现要先
+gfortran -c tongji.f90
+然后 
+gfortran -c torch_bridge_fortran.f90
+然后
+gfortran -o bridge tongji.o torch_bridge_fortran.o
+
+原来需要在编译的时候把他们都写进去，或者通过makefile等等写进去
+
+我终于找到之前的我自己写的f90不能运行的原因了。
