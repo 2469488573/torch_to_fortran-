@@ -5,7 +5,9 @@
         private 
         public cal_point 
         public cal_output
-        
+        public cal_input
+        public cal_dense
+        public cal_jihuo
         contains 
 
         subroutine cal_input(x,w,b,y,m,n)
