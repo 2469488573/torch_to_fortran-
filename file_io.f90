@@ -6,10 +6,28 @@
                 public danzhi
                 public shuzu
                 public filelinenum        
-                public tongyong
+!                public tongyong
+                public weiducanshu
         contains
 
-       subroutine danzhi(filename,var)
+        subroutine weiducanshu(filename,n,m,o)
+!从文件中读取m,n,o
+                character(len = 100),intent(in) ::filename
+                integer,intent(inout)      ::  n,m,o 
+                open(unit=13,file=filename)
+                read(13,*) 
+                read(13,*)
+                read(13,*)
+                read(13,*), m
+                read(13,*)
+                read(13,*),n
+                read(13,*)
+                read(13,*),o
+ 
+
+        end subroutine weiducanshu
+
+        subroutine danzhi(filename,var)
                 !从文件filename中，读取一个数到var中
                 character(len = 100),intent(in) ::filename
                 real      ::  var 
@@ -54,31 +72,38 @@
 
         end function filelinenum
 
-        subroutine tongyong(filename,n, m,o,var)
-        !读取的txt需要是一行一个数据，先判断行数（数据数），然后再读成一维数组，再根据输入的参数，reshape成多维数组
-                character(len = 100),intent(in)  :: filename
-                integer,intent(in)               :: n,m,o
-                real,intent(out)                 :: var(n,m,o)
-                real,allocatable                 :: yiweishuzu(:) 
-                integer                          :: length,i
-
-100             format(F8.4)
-
-                length = filelinenum(filename)
-
-                allocate(yiweishuzu(length))
-
-                print*,filelinenum(filename)
-                
-                open(12,file = trim(filename))
-                yiweishuzu =0
-                do i = 1,length
-                        read(12,100) yiweishuzu(i)                 
-                end do
-                print*,yiweishuzu
-                var =  reshape(yiweishuzu,(/n,m,o/))
-
-        end subroutine tongyong
+!        subroutine tongyong(filename,weidu,var)
+!        !读取的txt需要是一行一个数据，先判断行数（数据数），然后再读成一维数组，再根据输入的参数，reshape成多维数组
+!        !传进来一个一维数组weidu,这个数组控制reshape函数。
+!
+!                character(len = 100),intent(in)  :: filename
+!                integer,intent(in)               :: weidu_index
+!                integer,intent(in)               :: weidu(weidu_index)
+!                real,intent(out)                 :: var(n,m,o)
+!                real,allocatable                 :: yiweishuzu(:) 
+!                integer                          :: length,i
+!
+!100             format(F10.4)
+!
+!                length = filelinenum(filename)
+!
+!                allocate(yiweishuzu(length))
+!
+!                print*,filelinenum(filename)
+!                
+!                open(12,file = trim(filename))
+!
+!                yiweishuzu =0
+!
+!                do i = 1,length
+!                        read(12,100) yiweishuzu(i)                
+!                end do
+!
+!                print*,'yiweishuzu',yiweishuzu
+!
+!                var =  reshape(yiweishuzu,weidu)
+!
+!        end subroutine tongyong
 
 
       end module file_io
