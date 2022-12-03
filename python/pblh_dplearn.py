@@ -222,6 +222,10 @@ class NeuralNet(nn.Module):
 	    nn.ReLU(),
 	    nn.Linear(point_count,point_count),
 	    nn.ReLU(),
+	    nn.Linear(point_count,point_count),
+	    nn.ReLU(),
+	    nn.Linear(point_count,point_count),
+	    nn.ReLU(),
             nn.Linear(point_count, 1)
         )
 
@@ -457,7 +461,7 @@ b02_fortran = bias02
 #有几个因子  m = ?
 m = len(feature)
 #有几层      o = 2?
-o = 3          #   目前o 需要手动设定，为relu 的个数
+o = 5          #   目前o 需要手动设定，为relu 的个数
 #我们说的有几层指的是有几个激活函数，就有几层
 
 #每层有几个节点 n = ?

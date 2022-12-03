@@ -31,43 +31,50 @@
 
 !======================================================================
         !主程序引用mod区域
-        
+
+        !深度学习等需要用到统计方法，相关的代码写在tongji中        
         use tongji,     only:mean
-        use file_io,    only:danzhi,shuzu,filelinenum,weiducanshu
+        !文件读写相关的代码
+        use file_io,    only:danzhi,shuzu,filelinenum,weiducanshu,&
+                             array_1d,array_2d,array_b_dense,array_w_dense
+        !深度学习计算的相关代码
         use calculation,only:cal_point,cal_output,cal_input,cal_jihuo,cal_dense
 
         ! 主程序定义变量区域
 
-        integer  :: m,n,o!w的维度，分别表示因子数，每层节点数，层数
-        integer  :: o_c !当前计算的层数
-        integer  :: i,j,k !索引
-        integer  :: error !allocate flag
-        integer  :: function_kind  = 1!激活函数的种类
+        integer              :: m,n,o            !w的维度，分别表示因子数，每层节点数，层数
+        integer              :: o_c              !当前计算的层数
+        integer              :: i,j,k            !索引
+        integer              :: error            !allocate flag
+        integer              :: function_kind = 1!激活函数的种类
+        !计算中间变量都定义为可变数组，之后根据输入来分配内存空间
         real,allocatable     ::w(:,:,:),x(:),b(:,:),c(:),y(:,:),&
                                w_input(:,:)
-        real     :: d,z
-        real     :: wendu_pingjun,bias02
-        real,allocatable     :: weight02(:,:),weight00(:,:),bias00(:,:)
+        real                 :: d,z
+        real                 :: wendu_pingjun
+        !文件名字符数组都定义长度为100，文件名不宜过长        
         character(len = 100) :: filename_canshu = 'shuchucanshu.txt',&
-                                filename_w ='weight00.txt',&
-                                filename_b ='bias00.txt',&
-                                filename_c = 'weight02.txt',&
-                                filename_d = 'bias02.txt'
-        integer  :: weidu
+                                filename_w1= 'w_input.txt',&
+                                filename_b1= 'b_input.txt',&
+                                filename_w = 'w_dense.txt',&
+                                filename_b = 'b_dense.txt',&
+                                filename_c = 'w_output.txt',&
+                                filename_d = 'b_output.txt'
+        integer              :: weidu
 
-print*,'             ||                         ||             '
-print*,'            /||\                       /||\            '
-print*,'  Torch    / || \         Bridge      / || \   Fortran '
-print*,'          / /||\ \                   / /||\ \          '
-print*,'         / / || \ \                 / / || \ \         '
-print*,' _______/_/_/||\_\_\_______________/_/_/||\_\_\_______ '
-print*,' ============||=========================||============ '
-print*,'   ~~~~~~    ||       ~~~~~~~~~~        ||  ~~~~~~     '
-print*,'  ~~~~~~~~~  ||      ~~~~~~~~~~~~~      || ~~~~~~~~~   '
-print*,'  ~~~~~~~~~~~||    ~~~~~~~~~~~~~~~~~    || ~~~~~~~~~~~ '
-print*,'  ~~~~~~~    ||  ~~~~~~~~~~~~~~~~~~~~~~ || ~~~~~~~     '
-print*,'          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~          '
-print*,'______________________________________________________ '
+        print*,'             ||                         ||             '
+        print*,'            /||\                       /||\            '
+        print*,'  Torch    / || \         Bridge      / || \   Fortran '
+        print*,'          / /||\ \                   / /||\ \          '
+        print*,'         / / || \ \                 / / || \ \         '
+        print*,' _______/_/_/||\_\_\_______________/_/_/||\_\_\_______ '
+        print*,' ============||=========================||============ '
+        print*,'   ~~~~~~    ||       ~~~~~~~~~~        ||  ~~~~~~     '
+        print*,'  ~~~~~~~~~  ||      ~~~~~~~~~~~~~      || ~~~~~~~~~   '
+        print*,'  ~~~~~~~~~~~||    ~~~~~~~~~~~~~~~~~    || ~~~~~~~~~~~ '
+        print*,'  ~~~~~~~    ||  ~~~~~~~~~~~~~~~~~~~~~~ || ~~~~~~~     '
+        print*,'          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~          '
+        print*,'______________________________________________________ '
 
 
         print*,'                     程序开始运行                      '
@@ -77,7 +84,7 @@ print*,'______________________________________________________ '
 
 !因子数，节点数，神经层数初始化，默认为三个变量，四个节点和两层神经网络
         m=3
-        n=4
+        n=5
         o=2
 
 !将pytorch的参数传进来,m,n,o
@@ -103,7 +110,7 @@ print*,'______________________________________________________ '
 
 !最初赋值，防止内存错误,先用隐式构造一维数组，然后再改成多维数组
 
-        w=reshape( (/(i*0+1,i=1,m*n*o,1)/),(/n,m,o/))
+        w=reshape( (/(i*0+1,i=1,n*n*o,1)/),(/n,n,o/))
 
         x=(/(i*0+1,i = 1,m,1)/)
 
@@ -123,53 +130,77 @@ print*,'______________________________________________________ '
 !        print*,'c = ',c
 !        print*,'w = ',w
 
-!=================================================================================
-!输入从pytorch中传进来的参数！       
-!        allocate(weight02(n,m))
-!        allocate(weight00())
+!=========================================================================
+!输入从pytorch中传进来的参数！    w b c d 
 
-!weidu = (/n,m,o/)
- !       print*,'file_d 有',(filelinenum(filename_d)),'行！'
-!        call tongyong(filename_w,weidu,w)
-!        do i  = 1,m
-!                do j = 1,n 
-!                        do k = 1,o
-!                                print*,i,j,k,w(i,j,k)
+        !输入w_input
+        call array_2d(filename_w1,n,m,w_input)
+
+        !输入b_input
+        call array_1d(filename_b1,n,b(:,1))
+
+
+    !----------------------------------------------------------------- 
+
+        !输入w_dense (存在问题)
+        call array_w_dense(filename_w,n,n,o-1,w(:,:,2:) )
+
+!        check w
+!        do k = 1,o
+!                do i = 1,n
+!                        do j = 1,n
+!                                print*,k,'层',i,'节点',j,'因子',w(i,j,k)
 !                        enddo
 !                enddo
 !        enddo
-!        print*,'tonyong输出的数组w = ',w
-!        call danzhi(filename_d,bias02)
-!        call shuzu(filename_c,o,n,weight02)
-        !call shuzu(len_filename_w,filename_w,n,m,weight00)
-        !call shuzu(len_filename_b,filename_b,n,o,bias00)
-        !检查输入的数组的正确性：
-!        do i =1,n
-!                print*, (weight02(i,j),j=1,m)
-!        enddo 
 
 
-!========================================================================================
+        !输入b_dense
+        call array_b_dense(filename_b,n,o-1,b(:,2:))
+
+!        check b
+!        do k = 1,o
+!                do i = 1,n
+!                        print*,k,'层',i,'节点',b(i,k)
+!                enddo
+!        enddo
+
+
+    !----------------------------------------------------------------- 
+
+        !输入w_output 或者叫c
+        call array_1d(filename_c,n,c)
+
+        !输入b_output 或者叫d
+        call danzhi(filename_d,d)
+
+        
+!=========================================================================
 
 !深度学习模型计算结果代码
 
 ! 计算 输入层
+
         call cal_input(x,w_input,b(:,1),y(:,1),m,n)
+
         write(*,50),'第1层计算 sum (w1 * x) + b1 = ',y(:,1)
 
 ! 计算 激活函数
+
         !设定激活函数的种类
         !function_kind = 1 !, ReLU
         !function_kind = 2 !, tanh
         !function_kind = 3 !, sigmod
+
         call cal_jihuo(y(:,1),n,function_kind,y(:,1))
+
         write(*,50),'第1层结束 h1 = relu( sum ( w1 * x ) + b1 ) = ',y(:,1)
 
 
 ! 计算 中间层
 ! w的第一层和第二层维数、是不一样的，引入w1，而不用w(:,:,1),为了w下标和b保持一致
 
-!递推公式，帮助写循环        
+!递推公式:    
 
 !        call cal_dense(y(:,1),w(:,:,2),b(:,2),y(:,2),n,m)
 !        print*,'第二层计算 w2 * h1 + b2',y(:,2)
@@ -189,7 +220,7 @@ print*,'______________________________________________________ '
 
         do k = 2,o
 
-        call cal_dense(y(:,k-1),w(:,:,k),b(:,k),y(:,k),n,m)
+        call cal_dense(y(:,k-1),w(:,:,k),b(:,k),y(:,k),n,n)
         write(*,100)'第',k,'层计算 sum ( w',k,' * h',k-1,') + b',k,' = ',y(:,k)
 
         call cal_jihuo(y(:,k),n,function_kind,y(:,k))
@@ -202,7 +233,7 @@ print*,'______________________________________________________ '
         call cal_output(y(:,o),c,d,n,z)
 
 
-!格式化输出，格式定义
+!格式化输出，输出格式定义
 
         write(*,200) '输出结果 z = ',z
 50      format('',A,/(F10.2))
@@ -210,11 +241,12 @@ print*,'______________________________________________________ '
 150     format('',5(A,I0),A,/(F10.2))
 200     format('',A,/F10.2)
 
-!=========================================================================================
+!=========================================================================
 
      
         print*,'                     程序运行结束                      '
         print*,'======================================================='
+
         contains
         
       end program bridge
