@@ -217,14 +217,8 @@ class NeuralNet(nn.Module):
         # TODO: How to modify this model to achieve better performance?
         self.net = nn.Sequential(
             nn.Linear(input_dim,point_count),
-            nn.ReLU(),
-	    nn.Linear(point_count,point_count),
 	    nn.ReLU(),
-	    nn.Linear(point_count,point_count),
-	    nn.ReLU(),
-	    nn.Linear(point_count,point_count),
-	    nn.ReLU(),
-	    nn.Linear(point_count,point_count),
+            nn.Linear(point_count,point_count),
 	    nn.ReLU(),
             nn.Linear(point_count, 1)
         )
@@ -461,7 +455,7 @@ b02_fortran = bias02
 #有几个因子  m = ?
 m = len(feature)
 #有几层      o = 2?
-o = 5          #   目前o 需要手动设定，为relu 的个数
+o = 2          #   目前o 需要手动设定，为relu 的个数
 #我们说的有几层指的是有几个激活函数，就有几层
 
 #每层有几个节点 n = ?
@@ -485,7 +479,7 @@ for i in range(2,2*o,2):# range(x,y) 不包含y
 	w_dense = model.net[i].weight.data.cpu().numpy()
 	b_dense = model.net[i].bias.data.cpu().numpy()
 
-	with open("w_dense.txt","ab") as f:
+	with open("w_dense.txt","ab") as f:#追加写入模式
 		np.savetxt(f,w_dense,fmt = '%f')
 	with open("b_dense.txt","ab") as g:
 		np.savetxt(g,b_dense,fmt = '%f')
@@ -521,5 +515,9 @@ note.write(str(o))
 note.close
 
 #将TXT传到TBF文件夹中：
-os.system('cp *.txt ../') 
+os.system('cp *.txt $deeplearn/torch_bridge_fortran/') 
+#一些有用的代码
+#查看tt_set 里面的x
+for x in tt_set:
+	print(x)
 
