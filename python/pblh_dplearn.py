@@ -7,14 +7,40 @@ Created on Wed Jun  8 18:23:55 2022
 
 xshell use utf-8 
 
-这个程序，用ERA5的资料进行深度学习训练边界层高度模型
+这个程序是一个TBF的实例程序的torch部分，
+
+第一步：需要输入训练数据，验证数据，测试数据，
+	1.计算一个y所需要的x1，x2...xm,这个是m = feature_count .
+
+第二步：网络架构设计：设置有几层，每层有几个节点，哪类激活函数
+	1.每层有几个节点在point_count,feature,n = point_count 设置；
+	2.有几层这个在nn.sequential{}中设置，然后在后面的o = {激活函数的个数} 
+	3.在nn.sequential 中激活函数和线性层交替排列，现代深度学习一般relu为激活函数	      也可以使sigmod、tanh等，这个在torch最好设为一样的，在KBF目前只能设置成一样	  的。
+
+第三步：设置优化方法，主要是对优化方法，npoch,batch_size,等进行修改，以达到最好的优化效果，得到最优参数W,b,c,d
+
+第四步：查看训练的结果，两张图，方差，均方根误差等决定需不需要再次重复上面步骤。
+
+第五步：在训练效果很好，得到正确参数的情况下，传输模型参数先输出为txt文件，
+	然后用fortran读取到KBF中。
+	1.检查m,n,o,function_kind,shuchucanshu.txt
+	2.检查w_input.txt w_dense.txt w_output.txt
+	3.检查b_input.txt b_dense.txt b_output.txt 
+
+第六步：将*.txt 传输到torch_bridge_fortran 文件夹中
+之后的操作留给fortran程序来解决。
+
+
+这个示例程序，用ERA5的资料进行深度学习训练边界层高度模型
 主要可以修改的部分是因子选择，训练方法，绘图等等
+
 """
 
 #time 
 import datetime
 
-import xarray as xr
+
+
 
 # PyTorch
 import torch
@@ -26,7 +52,9 @@ import numpy as np
 import csv
 import os
 import pandas as pd
+import xarray as xr
 import math
+
 # For plotting
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import figure
@@ -34,9 +62,15 @@ from matplotlib.pyplot import figure
 #for earthlab no GPU
 plt.switch_backend('agg')
 
-path = 'h_small.nc'
-data=xr.open_dataset(path)
 
+
+#==================================================================================
+#数据准备
+
+path = 'h_small.nc'                                 #路径和文件
+#用xarray输入数据
+data=xr.open_dataset(path)
+#输入数据
 lon = data.longitude.data
 lat = data.latitude.data
 time  = data.time.data 
@@ -55,7 +89,7 @@ ssh =     data.sshf.data
 
 pblh =     data.blh.data
 
-
+#将数据转为一维数据，-1 表示默认待定
 t2m1 =  t2m.reshape(-1,1)
 bld1 =  bld.reshape(-1,1)
 zust1=  zust.reshape(-1,1)       
@@ -69,38 +103,43 @@ sp1 =   sp.reshape(-1,1)
 ssh1=   ssh.reshape(-1,1)
 
 pblh1=  pblh.reshape(-1,1) 
-
+#将一维列数据拼接成矩阵,hstack 水平拼接，vstack垂直拼接：
 data_for_dp = np.hstack((t2m1,bld1,zust1,gwd1,sst1,skt1,slhf1,ssr1,st1,sp1,ssh1,pblh1))
+#第一个索引表示行，第二表示列，选取训练数据量
 
+#训练数据
 data_train   =   data_for_dp[0:3000,:]
+#测试数据，只给因子，不给y,：-1表示到倒数第二列
 data_test  = data_for_dp[3001:5000,:-1]
 
+#转化为pandas的数据结构：表，为了后面使用to_save函数
 data_train = pd.DataFrame(data_train)
 data_test =pd.DataFrame(data_test)
-
+#保存数据到csv
 data_test.to_csv('test.csv',index=False, header=None)
 data_train.to_csv('train.csv',index=False, header=None)
 
 # feature = [0,1,2,3,4,5,6,7,8,9,10]
 # feature_for_train=[0,1,2,3,4,5,6,7,8,9,10,11]
 
+#对因子选择
 feature = [2,6,10]
+#训练时需要加上y
 feature_for_train=[2,6,10,11]
-
+#统计因子个数
 feature_count = np.size(feature)
-
-point_count = 4 #每层的节点数
+#每层的节点数
+point_count = 64 #每层的节点数
 
 
 #%%
-#xiamina jiu kaishi jinxin xunlian 
 
-tr_path = 'train.csv'  # path to training data
-tt_path = 'test.csv'   # path to testing data
-
+tr_path = 'train.csv'  # 训练数据的路径
+tt_path = 'test.csv'   # 测试数据的路径
 
 
-myseed = 42069  # set a random seed for reproducibility
+
+myseed = 42069  # 设置随机数种子
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 np.random.seed(myseed)
@@ -108,74 +147,87 @@ torch.manual_seed(myseed)
 if torch.cuda.is_available():
     torch.cuda.manual_seed_all(myseed)
 
-# # **Some Utilities**
+# 一些实用函数
 
+
+#获得计算设备：是CPU还是GPU,是否支持显卡加速计算
 def get_device():
     ''' Get device (if GPU is available, use GPU) '''
     return 'cuda' if torch.cuda.is_available() else 'cpu'
 
+#绘制学习曲线函数
 def plot_learning_curve(loss_record, title=''):
-    ''' Plot learning curve of your DNN (train & dev loss) '''
+    '''绘制DNN学习曲线(训练和验证的误差函数)'''
     total_steps = len(loss_record['train'])
+
     x_1 = range(total_steps)
     x_2 = x_1[::len(loss_record['train']) // len(loss_record['dev'])]
+
     figure(figsize=(6, 4))
+
     plt.plot(x_1, loss_record['train'], c='tab:red', label='train')
     plt.plot(x_2, loss_record['dev'], c='tab:cyan', label='dev')
+
     plt.ylim(0.0, 2000.)
     plt.xlabel('Training steps')
     plt.ylabel('MSE loss')
     plt.title('Learning curve of {}'.format(title))
     plt.legend()
-    plt.savefig(r'learncurve.jpg')
-#    plt.show()
- 
 
+    plt.savefig(r'learncurve.jpg')
+#    plt.show()#在超算上不能够直接显示
+ 
+#未来需要实现的功能：每次训练之后的数据，模型，代码，图片等都备份到一个特殊命名文件夹中
+
+
+#数据加载和前处理
 class myDataset(Dataset):
-    ''' Dataset for loading and preprocessing the COVID19 dataset '''
+    ''' 数据集的加载和预处理'''
     def __init__(self,
                  path,
                  mode='train',
                  target_only=False):
         self.mode = mode
 
-        # Read data into numpy arrays
+        # 将数据读到numpy数组中
         with open(path, 'r') as fp:
             data = list(csv.reader(fp))
             data = np.array(data[:])[:, :].astype(float)
-        
+
+#代码这个地方存在BUG,导致因子是前三个，后面改一下        
+#给feats 赋值根据target_only
         if not target_only:
             feats = list(range(feature_count))
         else:
-           feats = list(range(feature_count))# feats = list(range(40))
-           # feats.extend([57,75])# TODO
+           feats = list(range(feature_count))
 
+#根据test或者是train或者是dev分配数据
         if mode == 'test':
-            # Testing data    
+            # 测试数据 
             data = data[:, feats]
             self.data = torch.FloatTensor(data)
         else:
-            # Training data (train/dev sets)
-            # data: 2700 x 94 (40 states + day 1 (18) + day 2 (18) + day 3 (18))
+            # 训练数据
             target = data[:, -1]
             data = data[:, feats]
             
-            # Splitting training data into train & dev sets
+            # 将训练数据分为训练集和验证集，这里是每十个里面选一个作为验证集
             if mode == 'train':
                 indices = [i for i in range(len(data)) if i % 10 != 0]
             elif mode == 'dev':
                 indices = [i for i in range(len(data)) if i % 10 == 0]
             
-            # Convert data into PyTorch tensors
+            # 将数据转化为PyTorch的数据格式 tensor
             self.data = torch.FloatTensor(data[indices])
             self.target = torch.FloatTensor(target[indices])
 
-        # Normalize features (you may remove this part to see what will happen)
+
+         #对数据正则化(可选，对参数优化有帮助) = 距平/标准差
  #       self.data[:, :] =  (self.data[:, :] - self.data[:, :].mean(dim=0, keepdim=True))   / self.data[:, :].std(dim=0, keepdim=True)
 
         self.dim = self.data.shape[1]
 
-        print('Finished reading the {} set of Dataset ({} samples found, each dim = {})'
+        print('结束读取Finished reading the {} set of Dataset ({} samples found, each dim = {})'
               .format(mode, len(self.data), self.dim))
 
     def __getitem__(self, index):
