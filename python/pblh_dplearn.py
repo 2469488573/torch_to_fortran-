@@ -132,12 +132,10 @@ feature_count = np.size(feature)
 point_count = 64 #每层的节点数
 
 
-#%%
+#%%=======================================================================
 
 tr_path = 'train.csv'  # 训练数据的路径
 tt_path = 'test.csv'   # 测试数据的路径
-
-
 
 myseed = 42069  # 设置随机数种子
 torch.backends.cudnn.deterministic = True
@@ -148,7 +146,6 @@ if torch.cuda.is_available():
     torch.cuda.manual_seed_all(myseed)
 
 # 一些实用函数
-
 
 #获得计算设备：是CPU还是GPU,是否支持显卡加速计算
 def get_device():
@@ -225,9 +222,10 @@ class myDataset(Dataset):
          #对数据正则化(可选，对参数优化有帮助) = 距平/标准差
  #       self.data[:, :] =  (self.data[:, :] - self.data[:, :].mean(dim=0, keepdim=True))   / self.data[:, :].std(dim=0, keepdim=True)
 
+	#统计数据个数
         self.dim = self.data.shape[1]
 
-        print('结束读取Finished reading the {} set of Dataset ({} samples found, each dim = {})'
+        print('结束读取 {} 集， ({} 样本被输入, 每个 有 {} 数据)'
               .format(mode, len(self.data), self.dim))
 
     def __getitem__(self, index):
@@ -254,60 +252,64 @@ def prep_dataloader(path, mode, batch_size, n_jobs=0, target_only=False):
     return dataloader
 
 
-# # **Deep Neural Network**
+# # 深度神经网络
 # 
-# `NeuralNet` is an `nn.Module` designed for regression.
-# The DNN consists of 2 fully-connected layers with ReLU activation.
-# This module also included a function `cal_loss` for calculating loss.
+# NeuralNet 被设计用来深度学习回归方程
+# 这个DNN含有多个全连接层和多个ReLU激活函数
+# 这个网络还定义了一个误差函数来计算误差
 # 
 class NeuralNet(nn.Module):
-    ''' A simple fully-connected deep neural network '''
+    ''' 一个简单的全连接深度神经网络（DNN） '''
     def __init__(self, input_dim):
         super(NeuralNet, self).__init__()
-#	point_count=4 #每层的节点数
-        # Define your neural network here
-        # TODO: How to modify this model to achieve better performance?
+        # 在这里定义神经网络
+	#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
         self.net = nn.Sequential(
-            nn.Linear(input_dim,point_count),
+
+            nn.Linear(input_dim  ,point_count),
+
 	    nn.ReLU(),
+
             nn.Linear(point_count,point_count),
+
 	    nn.ReLU(),
+
             nn.Linear(point_count, 1)
+
         )
 
-        # Mean squared error loss
+        # 均方根误差
         self.criterion = nn.MSELoss(reduction='mean')
+	#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def forward(self, x):
         ''' Given input of size (batch_size x input_dim), compute output of the network '''
         return self.net(x).squeeze(1)
 
     def cal_loss(self, pred, target):
-        ''' Calculate loss '''
-        # TODO: you may implement L2 regularization here
+        ''' 计算损失函数 '''
+        # 这里可以选择正则化
         return self.criterion(pred, target)
 
-
-# # **Train/Dev/Test**
-
-# ## **Training**
-
-# In[7]:
+# ## **训练**
 
 
 def train(tr_set, dv_set, model, config, device):
-    ''' DNN training '''
+    ''' DNN 训练 '''
 
-    n_epochs = config['n_epochs']  # Maximum number of epochs
+    n_epochs = config['n_epochs']  # 最大训练轮数
 
-    # Setup optimizer
+    # 设置优化
     optimizer = getattr(torch.optim, config['optimizer'])(
         model.parameters(), **config['optim_hparas'])
 
-    min_mse = 100000.
-    loss_record = {'train': [], 'dev': []}      # for recording training loss
-    early_stop_cnt = 0
-    epoch = 0
+    min_mse = 100000.       #能够被保存模型的 最小的误差
+    loss_record = {'train': [], 'dev': []}      # 为了保存训练的误差函数
+
+    early_stop_cnt = 0#初始化提前终止步数
+    epoch = 0#初始化轮数
     while epoch < n_epochs:
         model.train()                           # set model to training mode
         for x, y in tr_set:                     # iterate through the dataloader
@@ -325,7 +327,7 @@ def train(tr_set, dv_set, model, config, device):
         if dev_mse < min_mse:
             # Save model if your model improved
             min_mse = dev_mse
-            print('Saving model (epoch = {:4d}, loss = {:.4f})'
+            print('保存模型(epoch = {:4d}, loss = {:.4f})'
                 .format(epoch + 1, min_mse))
             torch.save(model.state_dict(), config['save_path'])  # Save model to specified path
             early_stop_cnt = 0
@@ -338,7 +340,7 @@ def train(tr_set, dv_set, model, config, device):
             # Stop training if your model stops improving for "config['early_stop']" epochs.
             break
 
-    print('Finished training after {} epochs'.format(epoch))
+    print('结束训练！经历了 {} 轮！'.format(epoch))
     return min_mse, loss_record
 
 
@@ -374,49 +376,58 @@ def test(tt_set, model, device):
 
 
 #%%
-#关键的地方了
-# # **Setup Hyper-parameters**
 # 
-# `config` contains hyper-parameters for training and the path to save your model.
+# # **设置超参数**
+# 
+# 设置训练的超参数和存放模型的路径
 
-device = get_device()                 # get the current available device ('cpu' or 'cuda')
-os.makedirs('models', exist_ok=True)  # The trained model will be saved to ./models/
-target_only = False                 # TODO: Using 40 states & 2 tested_positive features
+device = get_device()                 # 获得可用设备 ('cpu' 或者 'cuda')
+os.makedirs('models', exist_ok=True)  # 训练的模型将会放在当前目录下的models中 ./models/
+target_only = False                 #可以在选择因子时使用
 
-# TODO: How to tune these hyper-parameters to improve your model's performance?
+# 改变优化超参数去改进模型训练
+#++++++++++++++++++++++++++++++++++++++++++++++++++++
+#根据数据量改变优化参数
+
 config = {
-    'n_epochs': 3000,                # maximum number of epochs
-    'batch_size': 300,               # mini-batch size for dataloader
-#    'optimizer': 'SGD',              # optimization algorithm (optimizer in torch.optim)
-    'optimizer': 'Adam',
-    'optim_hparas': {                # hyper-parameters for the optimizer (depends on which optimizer you are using)
-#        'lr': 0.001,                 # learning rate of SGD
-#        'momentum': 0.09              # momentum for SGD
+    'n_epochs': 3000,                # 最大epochs数
+    'batch_size': 300,               # mini-batch 尺寸，batch包含的数据量
+#    'optimizer': 'SGD',              # 优化算法选择 optimization algorithm (optimizer in torch.optim)
+    'optimizer': 'Adam',  
+    'optim_hparas': {                #优化算法的超参数(取决于选取的优化算法)
+#        'lr': 0.001,                 # SGD(随机梯度下降算法)的学习率
+#        'momentum': 0.09              # SGD的动能
     },
-    'early_stop': 100,               # early stopping epochs (the number epochs since your model's last improvement)
-    'save_path': 'models/model.pth'  # your model will be saved here
+    'early_stop': 100,               # 提前终止的最大步数 (自从上次模型参数更新的轮数，如果这么多步仍然没有更新则提前终止优化)1起到正则化作用，2减少计算资源消耗
+    'save_path': 'models/model.pth'  # 模型保存路径
 }
 
+#++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-# # **Load data and model**
+# # **加载数据和模型**
 
 tr_set = prep_dataloader(tr_path, 'train', config['batch_size'], target_only=target_only)
+
 dv_set = prep_dataloader(tr_path, 'dev', config['batch_size'], target_only=target_only)
+
 tt_set = prep_dataloader(tt_path, 'test', config['batch_size'], target_only=target_only)
 
-model = NeuralNet(tr_set.dataset.dim).to(device)  # Construct model and move to device
+model = NeuralNet(tr_set.dataset.dim).to(device)  #实例化(创建)模型并移动到设备
 
-# # **Start Training!**
+# # **开始训练!**
 
-model_loss, model_loss_record = train(tr_set, dv_set, model, config, device)
+model_loss, model_loss_record = train(tr_set, dv_set, model, config, device)    #  训练过程
 
-plot_learning_curve(model_loss_record, title='deep model')
+
+plot_learning_curve(model_loss_record, title='deep model')  #绘制学习曲线 
 
 del model
 model = NeuralNet(tr_set.dataset.dim).to(device)
-ckpt = torch.load(config['save_path'], map_location='cpu')  # Load your best model
-model.load_state_dict(ckpt)
+ckpt = torch.load(config['save_path'], map_location='cpu')  # 加载最好的模型
+model.load_state_dict(ckpt)	#加载模型参数
 
+
+#函数：绘制验证集和预测值的对比图，验证模型训练效果
 def plot_pred(dv_set, model, device, lim=600, preds=None, targets=None):
     ''' Plot prediction of your DNN '''
     if preds is None or targets is None:
@@ -443,11 +454,11 @@ def plot_pred(dv_set, model, device, lim=600, preds=None, targets=None):
 #    plt.show()
 
 
-plot_pred(dv_set, model, device)  # Show prediction on the validation set
+plot_pred(dv_set, model, device)  # 绘制验证集和预测值对比 
 
 
-# # **Testing**
-# The predictions of your model on testing set will be stored at `pred.csv`.
+# # **测试**
+# 利用测试集和模型计算的预测值将会被保存在pred.csv 中
 
 def save_pred(preds, file):
     ''' Save predictions to specified file '''
@@ -459,50 +470,20 @@ def save_pred(preds, file):
             writer.writerow([i, p])
 
 
-preds = test(tt_set, model, device)  # predict COVID-19 cases with your model
-save_pred(preds, 'pred.csv')         # save prediction file to pred.csv
+preds = test(tt_set, model, device)  #使用测试集和训练好的深度模型 预测 y
+
+save_pred(preds, 'pred.csv')         # 保存预测数据到 pred.csv 文件
 
 
-# # **Hints**
-# 
-# ## **Medium Baseline**
-# * Feature selection: 40 states + 2 `tested_positive` (`TODO` in dataset)
-# 
+##========================================================================
+#模型参数传递torch->TBF->Fortran
 
-# * Feature selection (what other features are useful?)
-# * DNN architecture (layers? dimension? activation function?)
-# * Training (mini-batch? optimizer? learning rate?)
-# * L2 regularization
 
-# calculate parameters number sum  计算模型参数总数。 
+#  计算模型参数总数。 
 total = sum(p.numel() for p in model.parameters())
 print("Total params: %.2f" % (total))
 
-
-
-#%%
-weight00 = model.net[0].weight.data.cpu().numpy()
-weight02 = model.net[2].weight.data.cpu().numpy()
-bias00 = model.net[0].bias.data.cpu().numpy()
-bias02 = model.net[2].bias.data.cpu().numpy()
-
-#为了直接在cesm中手动加入，早期方法
-w00_fortran = weight00.T.reshape(-1,1)
-#np.savetxt("weight00.txt", w00_fortran,fmt='%f',delimiter=' ')
-
-w02_fortran = weight02.T.reshape(-1,1)
-#np.savetxt("weight02.txt", w02_fortran,fmt='%f',delimiter=' ')
-
-b00_fortran = bias00.reshape(-1,1)
-#np.savetxt("bias00.txt", b00_fortran,fmt='%f',delimiter=' ')
-
-b02_fortran = bias02
-#np.savetxt("bias02.txt", b02_fortran,fmt='%f',delimiter=' ')
-
 #将pth 的模型参数输出出来
-
-
-#必须输出
 
 #有几个因子  m = ?
 m = len(feature)
