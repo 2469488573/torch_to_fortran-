@@ -1,9 +1,10 @@
+#!/public/software/apps/anaconda3/5.3.0/bin/python
 # -*- coding: utf-8 -*-
 
 """
 Created on Wed Jun  8 18:23:55 2022
 
-@author: Mayubin
+@author: 马钰斌
 
 xshell use utf-8 
 
@@ -15,7 +16,7 @@ xshell use utf-8
 第二步：网络架构设计：设置有几层，每层有几个节点，哪类激活函数
 	1.每层有几个节点在point_count,feature,n = point_count 设置；
 	2.有几层这个在nn.sequential{}中设置，然后在后面的o = {激活函数的个数} 
-	3.在nn.sequential 中激活函数和线性层交替排列，现代深度学习一般relu为激活函数	      也可以使sigmod、tanh等，这个在torch最好设为一样的，在KBF目前只能设置成一样	  的。
+	3.在nn.sequential 中激活函数和线性层交替排列，现代深度学习一般relu为激活函数	      也可以使sigmod、tanh等，这个在torch最好设为一样的，在KBF目前只能设置成一样的。
 
 第三步：设置优化方法，主要是对优化方法，npoch,batch_size,等进行修改，以达到最好的优化效果，得到最优参数W,b,c,d
 
@@ -39,9 +40,6 @@ xshell use utf-8
 #time 
 import datetime
 
-
-
-
 # PyTorch
 import torch
 import torch.nn as nn
@@ -62,8 +60,6 @@ from matplotlib.pyplot import figure
 #for earthlab no GPU
 plt.switch_backend('agg')
 
-
-
 #==================================================================================
 #数据准备
 
@@ -73,21 +69,21 @@ data=xr.open_dataset(path)
 #输入数据
 lon = data.longitude.data
 lat = data.latitude.data
-time  = data.time.data 
+time=  data.time.data 
 
 t2m =  data.t2m.data        
 bld =  data.bld.data                
-zust=    data.zust.data       
-gwd =     data.gwd.data        
-sst =     data.sst.data       
-skt =     data.skt.data        
-slhf =     data.slhf.data      
-ssr=    data.ssr.data        
-st =     data.str.data        
-sp =     data.sp.data        
-ssh =     data.sshf.data
+zust=  data.zust.data       
+gwd =  data.gwd.data        
+sst =  data.sst.data       
+skt =  data.skt.data        
+slhf=  data.slhf.data      
+ssr =  data.ssr.data        
+st  =  data.str.data        
+sp  =  data.sp.data        
+ssh =  data.sshf.data
 
-pblh =     data.blh.data
+pblh=  data.blh.data
 
 #将数据转为一维数据，-1 表示默认待定
 t2m1 =  t2m.reshape(-1,1)
@@ -103,10 +99,11 @@ sp1 =   sp.reshape(-1,1)
 ssh1=   ssh.reshape(-1,1)
 
 pblh1=  pblh.reshape(-1,1) 
+
 #将一维列数据拼接成矩阵,hstack 水平拼接，vstack垂直拼接：
 data_for_dp = np.hstack((t2m1,bld1,zust1,gwd1,sst1,skt1,slhf1,ssr1,st1,sp1,ssh1,pblh1))
-#第一个索引表示行，第二表示列，选取训练数据量
 
+#第一个索引表示行，第二表示列，选取训练数据量
 #训练数据
 data_train   =   data_for_dp[0:3000,:]
 #测试数据，只给因子，不给y,：-1表示到倒数第二列
@@ -115,6 +112,7 @@ data_test  = data_for_dp[3001:5000,:-1]
 #转化为pandas的数据结构：表，为了后面使用to_save函数
 data_train = pd.DataFrame(data_train)
 data_test =pd.DataFrame(data_test)
+
 #保存数据到csv
 data_test.to_csv('test.csv',index=False, header=None)
 data_train.to_csv('train.csv',index=False, header=None)
@@ -123,9 +121,11 @@ data_train.to_csv('train.csv',index=False, header=None)
 # feature_for_train=[0,1,2,3,4,5,6,7,8,9,10,11]
 
 #对因子选择
-feature = [2,6,10]
+#feature = [2,6,10]
+feature = [0,1,2,4,5,6,8,9,10]
 #训练时需要加上y
-feature_for_train=[2,6,10,11]
+#feature_for_train=[2,6,10,11]
+feature_for_train=[0,1,2,4,5,6,8,9,10,11]
 #统计因子个数
 feature_count = np.size(feature)
 #每层的节点数
@@ -149,10 +149,10 @@ if torch.cuda.is_available():
 
 #获得计算设备：是CPU还是GPU,是否支持显卡加速计算
 def get_device():
-    ''' Get device (if GPU is available, use GPU) '''
+    ''' 获得设备 ( 如果 GPU 可用, 则用 GPU) '''
     return 'cuda' if torch.cuda.is_available() else 'cpu'
 
-#绘制学习曲线函数
+#函数：绘制学习曲线
 def plot_learning_curve(loss_record, title=''):
     '''绘制DNN学习曲线(训练和验证的误差函数)'''
     total_steps = len(loss_record['train'])
@@ -173,6 +173,39 @@ def plot_learning_curve(loss_record, title=''):
 
     plt.savefig(r'learncurve.jpg')
 #    plt.show()#在超算上不能够直接显示
+
+
+#函数：绘制验证集和预测值的对比图，验证模型训练效果
+def plot_pred(dv_set, model, device, lim=600, preds=None, targets=None):
+    ''' 绘制DNN模型输出和验证集 '''
+    if preds is None or targets is None:
+        model.eval()
+        preds, targets = [], []
+        for x, y in dv_set:
+            x, y = x.to(device), y.to(device)
+            with torch.no_grad():
+                pred = model(x)
+                preds.append(pred.detach().cpu())
+                targets.append(y.detach().cpu())
+        preds = torch.cat(preds, dim=0).numpy()
+        targets = torch.cat(targets, dim=0).numpy()
+
+    figure(figsize=(5, 5))
+    plt.scatter(targets, preds, c='r', alpha=0.5)
+    plt.plot([-0.2, lim], [-0.2, lim], c='b')
+    plt.xlim(-0.2, lim)
+    plt.ylim(-0.2, lim)
+    plt.xlabel('ground truth value')
+    plt.ylabel('predicted value')
+    plt.title('Ground Truth v.s. Prediction')
+    plt.savefig(r'preds.jpg')
+#    plt.show()
+
+
+
+
+
+
  
 #未来需要实现的功能：每次训练之后的数据，模型，代码，图片等都备份到一个特殊命名文件夹中
 
@@ -191,12 +224,11 @@ class myDataset(Dataset):
             data = list(csv.reader(fp))
             data = np.array(data[:])[:, :].astype(float)
 
-#代码这个地方存在BUG,导致因子是前三个，后面改一下        
 #给feats 赋值根据target_only
         if not target_only:
-            feats = list(range(feature_count))
+            feats = list((feature))
         else:
-           feats = list(range(feature_count))
+           feats = list((feature))
 
 #根据test或者是train或者是dev分配数据
         if mode == 'test':
@@ -204,7 +236,7 @@ class myDataset(Dataset):
             data = data[:, feats]
             self.data = torch.FloatTensor(data)
         else:
-            # 训练数据
+            # 训练数据,-表示倒数第一个
             target = data[:, -1]
             data = data[:, feats]
             
@@ -225,7 +257,7 @@ class myDataset(Dataset):
 	#统计数据个数
         self.dim = self.data.shape[1]
 
-        print('结束读取 {} 集， ({} 样本被输入, 每个 有 {} 数据)'
+        print('结束读取 {} 集， ({} 样本被输入, 每个 有 {} 变量)'
               .format(mode, len(self.data), self.dim))
 
     def __getitem__(self, index):
@@ -238,17 +270,17 @@ class myDataset(Dataset):
             return self.data[index]
 
     def __len__(self):
-        # Returns the size of the dataset
+        # 返回数据尺寸
         return len(self.data)
  
 
 def prep_dataloader(path, mode, batch_size, n_jobs=0, target_only=False):
-    ''' Generates a dataset, then is put into a dataloader. '''
-    dataset = myDataset(path, mode=mode, target_only=target_only)  # Construct dataset
+    '''建立一个数据集，然后将它放在dataloader中 '''
+    dataset = myDataset(path, mode=mode, target_only=target_only)  # 建立数据集
     dataloader = DataLoader(
         dataset, batch_size,
         shuffle=(mode == 'train'), drop_last=False,
-        num_workers=n_jobs, pin_memory=True)                            # Construct dataloader
+        num_workers=n_jobs, pin_memory=True)                            # 建立dataloader
     return dataloader
 
 
@@ -276,6 +308,18 @@ class NeuralNet(nn.Module):
 
 	    nn.ReLU(),
 
+            nn.Linear(point_count,point_count),
+
+	    nn.ReLU(),
+
+            nn.Linear(point_count,point_count),
+
+	    nn.ReLU(),
+
+            nn.Linear(point_count,point_count),
+
+	    nn.ReLU(),
+
             nn.Linear(point_count, 1)
 
         )
@@ -292,6 +336,8 @@ class NeuralNet(nn.Module):
         ''' 计算损失函数 '''
         # 这里可以选择正则化
         return self.criterion(pred, target)
+
+#=================================================================================================================
 
 # ## **训练**
 
@@ -311,25 +357,25 @@ def train(tr_set, dv_set, model, config, device):
     early_stop_cnt = 0#初始化提前终止步数
     epoch = 0#初始化轮数
     while epoch < n_epochs:
-        model.train()                           # set model to training mode
-        for x, y in tr_set:                     # iterate through the dataloader
-            optimizer.zero_grad()               # set gradient to zero
-            x, y = x.to(device), y.to(device)   # move data to device (cpu/cuda)
-            pred = model(x)                     # forward pass (compute output)
-            mse_loss = model.cal_loss(pred, y)  # compute loss
-            mse_loss.backward()                 # compute gradient (backpropagation)
-            optimizer.step()                    # update model with optimizer
+        model.train()                           # 设置模型到训练模式
+        for x, y in tr_set:                     # 通过dataloader迭代
+            optimizer.zero_grad()               # 设置梯度为0
+            x, y = x.to(device), y.to(device)   # 移动数据到设备中 (cpu/cuda)
+            pred = model(x)                     # 计算输出forward pass (compute output)
+            mse_loss = model.cal_loss(pred, y)  # 计算代价函数（误差函数）
+            mse_loss.backward()                 # 计算梯度 (反向传播算法)
+            optimizer.step()                    # 更新模型参数
             loss_record['train'].append(mse_loss.detach().cpu().item())
 
-        # After each epoch, test your model on the validation (development) set.
+        # 结束每一轮训练后，使用验证集测试模型
         dev_mse = dev(dv_set, model, device)
 #        print(epoch)
         if dev_mse < min_mse:
-            # Save model if your model improved
+            # 如果模型优化了，则保存模型
             min_mse = dev_mse
             print('保存模型(epoch = {:4d}, loss = {:.4f})'
                 .format(epoch + 1, min_mse))
-            torch.save(model.state_dict(), config['save_path'])  # Save model to specified path
+            torch.save(model.state_dict(), config['save_path'])  # 保存模型到特定的路径
             early_stop_cnt = 0
         else:
             early_stop_cnt += 1
@@ -337,43 +383,43 @@ def train(tr_set, dv_set, model, config, device):
         epoch += 1
         loss_record['dev'].append(dev_mse)
         if early_stop_cnt > config['early_stop']:
-            # Stop training if your model stops improving for "config['early_stop']" epochs.
+            #结束训练如果模型很久不更新参数了 ，需要在超参数中设置提前终止选项和轮数"config['early_stop']"
             break
 
     print('结束训练！经历了 {} 轮！'.format(epoch))
     return min_mse, loss_record
 
-
-# ## **Validation**
+#-----------------------------------------------------------------------------------------------------------------
+# ## **验证**
 
 def dev(dv_set, model, device):
-    model.eval()                                # set model to evalutation mode
+    model.eval()                                # 设置模型到评估模式
     total_loss = 0
-    for x, y in dv_set:                         # iterate through the dataloader
-        x, y = x.to(device), y.to(device)       # move data to device (cpu/cuda)
-        with torch.no_grad():                   # disable gradient calculation
-            pred = model(x)                     # forward pass (compute output)
-            mse_loss = model.cal_loss(pred, y)  # compute loss
-        total_loss += mse_loss.detach().cpu().item() * len(x)  # accumulate loss
-    total_loss = total_loss / len(dv_set.dataset)              # compute averaged loss
+    for x, y in dv_set:                         # 通过dataloader 迭代
+        x, y = x.to(device), y.to(device)       # 移动数据到‘设备’ (cpu/cuda)
+        with torch.no_grad():                   # 关闭梯度计算
+            pred = model(x)                     # 计算输出forward pass (compute output)
+            mse_loss = model.cal_loss(pred, y)  # 计算代价函数
+        total_loss += mse_loss.detach().cpu().item() * len(x)  # 计算累计误差
+    total_loss = total_loss / len(dv_set.dataset)              # 计算平均误差
 
     return total_loss
 
-
-# ## **Testing**
+#-----------------------------------------------------------------------------------------------------------------
+# ## **测试**
 
 def test(tt_set, model, device):
-    model.eval()                                # set model to evalutation mode
+    model.eval()                                # 设置模型到评估模式
     preds = []
-    for x in tt_set:                            # iterate through the dataloader
-        x = x.to(device)                        # move data to device (cpu/cuda)
-        with torch.no_grad():                   # disable gradient calculation
-            pred = model(x)                     # forward pass (compute output)
-            preds.append(pred.detach().cpu())   # collect prediction
-    preds = torch.cat(preds, dim=0).numpy()     # concatenate all predictions and convert to a numpy array
+    for x in tt_set:                            # 通过dataloader 迭代
+        x = x.to(device)                        # 移动数据到‘设备’ (cpu/cuda)
+        with torch.no_grad():                   # 关闭梯度计算
+            pred = model(x)                     # 计算输出forward pass (compute output)
+            preds.append(pred.detach().cpu())   # 收集预测值
+    preds = torch.cat(preds, dim=0).numpy()     # 收集所有的预测值并转化为一个numpy array 数组
     return preds
 
-
+#================================================================================================================
 
 #%%
 # 
@@ -386,7 +432,8 @@ os.makedirs('models', exist_ok=True)  # 训练的模型将会放在当前目录�
 target_only = False                 #可以在选择因子时使用
 
 # 改变优化超参数去改进模型训练
-#++++++++++++++++++++++++++++++++++++++++++++++++++++
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 #根据数据量改变优化参数
 
 config = {
@@ -402,7 +449,7 @@ config = {
     'save_path': 'models/model.pth'  # 模型保存路径
 }
 
-#++++++++++++++++++++++++++++++++++++++++++++++++++++
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 # # **加载数据和模型**
 
@@ -414,10 +461,10 @@ tt_set = prep_dataloader(tt_path, 'test', config['batch_size'], target_only=targ
 
 model = NeuralNet(tr_set.dataset.dim).to(device)  #实例化(创建)模型并移动到设备
 
+
 # # **开始训练!**
 
 model_loss, model_loss_record = train(tr_set, dv_set, model, config, device)    #  训练过程
-
 
 plot_learning_curve(model_loss_record, title='deep model')  #绘制学习曲线 
 
@@ -427,32 +474,6 @@ ckpt = torch.load(config['save_path'], map_location='cpu')  # 加载最好的模
 model.load_state_dict(ckpt)	#加载模型参数
 
 
-#函数：绘制验证集和预测值的对比图，验证模型训练效果
-def plot_pred(dv_set, model, device, lim=600, preds=None, targets=None):
-    ''' Plot prediction of your DNN '''
-    if preds is None or targets is None:
-        model.eval()
-        preds, targets = [], []
-        for x, y in dv_set:
-            x, y = x.to(device), y.to(device)
-            with torch.no_grad():
-                pred = model(x)
-                preds.append(pred.detach().cpu())
-                targets.append(y.detach().cpu())
-        preds = torch.cat(preds, dim=0).numpy()
-        targets = torch.cat(targets, dim=0).numpy()
-
-    figure(figsize=(5, 5))
-    plt.scatter(targets, preds, c='r', alpha=0.5)
-    plt.plot([-0.2, lim], [-0.2, lim], c='b')
-    plt.xlim(-0.2, lim)
-    plt.ylim(-0.2, lim)
-    plt.xlabel('ground truth value')
-    plt.ylabel('predicted value')
-    plt.title('Ground Truth v.s. Prediction')
-    plt.savefig(r'preds.jpg')
-#    plt.show()
-
 
 plot_pred(dv_set, model, device)  # 绘制验证集和预测值对比 
 
@@ -461,8 +482,8 @@ plot_pred(dv_set, model, device)  # 绘制验证集和预测值对比
 # 利用测试集和模型计算的预测值将会被保存在pred.csv 中
 
 def save_pred(preds, file):
-    ''' Save predictions to specified file '''
-    print('Saving results to {}'.format(file))
+    ''' 保存预测值到文件中 '''
+    print('保存结果到 {}'.format(file))
     with open(file, 'w') as fp:
         writer = csv.writer(fp)
         writer.writerow(['id', 'tested_positive'])
@@ -481,15 +502,15 @@ save_pred(preds, 'pred.csv')         # 保存预测数据到 pred.csv 文件
 
 #  计算模型参数总数。 
 total = sum(p.numel() for p in model.parameters())
-print("Total params: %.2f" % (total))
+print("总参数个数: %.2f" % (total))
 
 #将pth 的模型参数输出出来
 
 #有几个因子  m = ?
 m = len(feature)
-#有几层      o = 2?
-o = 2          #   目前o 需要手动设定，为relu 的个数
-#我们说的有几层指的是有几个激活函数，就有几层
+
+#有几层  o = ?
+o = ( len(list(model.net)) -1 )//2 #自动获取层数，减去输出层然后线性层和激活函数层的和整除以2
 
 #每层有几个节点 n = ?
 n = point_count
@@ -498,7 +519,7 @@ n = point_count
 w_input =  model.net[0].weight.data.cpu().numpy()
 b_input =  model.net[0].bias.data.cpu().numpy()
 
-print( model.net[0].weight.data.cpu().numpy())
+#print( model.net[0].weight.data.cpu().numpy())
 np.savetxt('w_input.txt',w_input,fmt='%f')
 np.savetxt('b_input.txt',b_input,fmt='%f')
 
@@ -507,7 +528,7 @@ os.system('rm w_dense.txt ')
 os.system('rm b_dense.txt')
 
 for i in range(2,2*o,2):# range(x,y) 不包含y 
-	print(model.net[i].weight.data.cpu().numpy())
+#	print(model.net[i].weight.data.cpu().numpy())
 
 	w_dense = model.net[i].weight.data.cpu().numpy()
 	b_dense = model.net[i].bias.data.cpu().numpy()
@@ -520,7 +541,7 @@ for i in range(2,2*o,2):# range(x,y) 不包含y
 
 #输出层的权重和误差
 
-print( model.net[2*o].weight.data.cpu().numpy())
+#print( model.net[2*o].weight.data.cpu().numpy())
 
 w_output =  model.net[2*o].weight.data.cpu().numpy()
 b_output =  model.net[2*o].bias.data.cpu().numpy()
@@ -548,9 +569,10 @@ note.write(str(o))
 note.close
 
 #将TXT传到TBF文件夹中：
-os.system('cp *.txt $deeplearn/torch_bridge_fortran/') 
+os.system('cp *.txt /data/chengxl/pblh_deeplearning/torch_bridge_fortran/') 
 #一些有用的代码
 #查看tt_set 里面的x
-for x in tt_set:
-	print(x)
+
+#for x in tt_set:
+#	print(x)
 
