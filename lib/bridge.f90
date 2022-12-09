@@ -1,4 +1,4 @@
-      program  bridge 
+      module   bridge 
 
 
         !|===============================================================|!
@@ -10,7 +10,7 @@
         !|训练的模型加到使用fortran编写的大气海洋等大型模式中。          |!
         !|作者：马钰斌                                                   |!
         !|开始日期：2022年11月27日                                       |!
-        !|更新记录：见https://github.com/2469488573/torch_to_fortran-    |!
+        !|更新记录：                                                     |!
         !|===============================================================|!
 
                                                                       
@@ -29,6 +29,32 @@
 !                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                  !                 
 !______________________________________________________________________!                                                                                
 
+        implicit none 
+        private
+        public tbf
+
+
+       contains
+
+        subroutine logo()
+
+        print*,'             ||                         ||             '
+        print*,'            /||\                       /||\            '
+        print*,'  Torch    / || \         Bridge      / || \   Fortran '
+        print*,'          / /||\ \                   / /||\ \          '
+        print*,'         / / || \ \                 / / || \ \         '
+        print*,' _______/_/_/||\_\_\_______________/_/_/||\_\_\_______ '
+        print*,' ============||=========================||============ '
+        print*,'   ~~~~~~    ||       ~~~~~~~~~~        ||  ~~~~~~     '
+        print*,'  ~~~~~~~~~  ||      ~~~~~~~~~~~~~      || ~~~~~~~~~   '
+        print*,'  ~~~~~~~~~~~||    ~~~~~~~~~~~~~~~~~    || ~~~~~~~~~~~ '
+        print*,'  ~~~~~~~    ||  ~~~~~~~~~~~~~~~~~~~~~~ || ~~~~~~~     '
+        print*,'          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~          '
+        print*,'______________________________________________________ '
+
+        end subroutine logo
+
+        subroutine tbf(ncol,m_cesm ,x_cesm,y_cesm )
 !======================================================================
         !主程序引用mod区域
 
@@ -52,7 +78,7 @@
                                w_input(:,:)
         real                 :: d,z
         real                 :: wendu_pingjun
-        !文件名字符数组都定义长度为100，文件名不宜过长        
+        !文件名字符数组都定义长度为100，文件名不宜过长       
         character(len = 100) :: dirname ="/data/chengxl/&
                          pblh_deeplearning/torch_bridge_fortran/python/"
         character(len = 100) ::  filename_canshu  ,& 
@@ -63,7 +89,15 @@
                                  filename_c       ,& 
                                  filename_d      
 
+
+
+ 
         real,allocatable     :: x_array(:,:)
+!从cesm中传进来数据
+        integer,intent(in)   :: ncol,m_cesm 
+        real,intent(in)      :: x_cesm(m_cesm,ncol)
+        real,intent(out)     :: y_cesm(ncol)
+!===================================================================================================
 
 
         call logo()
@@ -71,16 +105,14 @@
 
         print*,'                     程序开始运行                      '
         print*,'======================================================='
-
 !给定文件位置                                       
                 filename_canshu =  trim(dirname)//'shuchucanshu.txt'  
                 filename_w1     =  trim(dirname)//'w_input.txt'   
-                filename_b1     =  trim(dirname)//'b_input.txt'       
-                filename_w      =  trim(dirname)//'w_dense.txt'       
-                filename_b      =  trim(dirname)//'b_dense.txt'       
-                filename_c      =  trim(dirname)//'w_output.txt'      
+                filename_b1     =  trim(dirname)//'b_input.txt'    
+                filename_w      =  trim(dirname)//'w_dense.txt'    
+                filename_b      =  trim(dirname)//'b_dense.txt'     
+                filename_c      =  trim(dirname)//'w_output.txt'   
                 filename_d      =  trim(dirname)//'b_output.txt'
-
 
 !因子数，节点数，神经层数初始化，默认为三个变量，四个节点和两层神经网络
         m=3
@@ -134,47 +166,47 @@
 
         !输入w_input
         call array_2d(filename_w1,n,m,w_input)
-!        do i = 1,n
-!                do j = 1,m
-!                        print*,i,'节点',j,'因子','w_input',w_input(i,j)
-!                enddo
-!        enddo
+        do i = 1,n
+                do j = 1,m
+                        print*,i,'节点',j,'因子','w_input',w_input(i,j)
+                enddo
+        enddo
         !输入b_input
         call array_1d(filename_b1,n,b(:,1))
-!       print*,'b_input',b
+        print*,'b_input',b
 
      !----------------------------------------------------------------- 
 
-        !输入w_dense 
+        !输入w_dense (存在问题)
         call array_w_dense(filename_w,n,n,o-1,w(:,:,2:) )
 
 !        check w
-!        do k = 1,o
-!                do i = 1,n
-!                        do j = 1,n
-!                                print*,k,'层',i,'节点',j,'因子',w(i,j,k)
-!                        enddo
-!                enddo
-!        enddo
+        do k = 1,o
+                do i = 1,n
+                        do j = 1,n
+                                print*,k,'层',i,'节点',j,'因子',w(i,j,k)
+                        enddo
+                enddo
+        enddo
 
         !输入b_dense
         call array_b_dense(filename_b,n,o-1,b(:,2:))
 
 !       check b
-!        do k = 1,o
-!                do i = 1,n
-!                        print*,k,'层',i,'节点',b(i,k)
-!               enddo
-!       enddo
-!
+        do k = 1,o
+                do i = 1,n
+                        print*,k,'层',i,'节点',b(i,k)
+                enddo
+        enddo
+
      !----------------------------------------------------------------- 
 
         !输入w_output 或者叫c
         call array_1d(filename_c,n,c)
-!        print*,'c',c
+        print*,'c',c
         !输入b_output 或者叫d
         call danzhi(filename_d,d)
-!        print*,'d',d
+        print*,'d',d
 
 !模型参数输出结束。        
 !=========================================================================
@@ -184,11 +216,12 @@
          x=(/264.32004,6417.3438,0.3210011/)
 
         allocate(x_array(m,5))
-        x_array(:,1) = (/264.32004,0.3210011,14510.625,52310.562/)
-        x_array(:,2) = (/264.31717,0.32086015,14449.125,52227.875/)
-        x_array(:,3) = (/264.31717,0.32067218,14449.125,52186.5/)
-        x_array(:,4) = (/264.31573,0.3205077,14449.125,52062.375/)
-        x_array(:,5) = (/264.31573,0.3203667,14387.5,51979.688/)
+        x_array(:,1) = (/264.32004,6417.3438,0.3210011,271.46045,263.9699,14510.625,-33286.188,101503.36,52310.562/)
+        x_array(:,2) = (/264.31717,6399.625,0.32086015,271.46045,263.9699,14449.125,-33387.406,101504.21,52227.875/)
+        x_array(:,3) = (/264.31717,6399.625,0.32067218,271.46045,263.9699,14449.125,-33488.656,101504.21,52186.5/)
+        x_array(:,4) = (/264.31573,6390.75,0.3205077,271.46045,263.9699,14449.125,-33589.875,101505.92,52062.375/)
+        x_array(:,5) = (/264.31573,6390.75,0.3203667,271.46045,263.97174,14387.5,-33691.125,101505.92,51979.688/)
+
 
 
 !现在只能手动输入x数组，未来需要实现，x-->z
@@ -196,7 +229,7 @@
 !========================================================================
 !新建立一个变量叫x_array，然后对x_array(:,i)进行循环，然后输出z(i)数组
 
-        do i = 1,5
+        do i = 1,ncol
 
 
 
@@ -204,7 +237,7 @@
 
 ! 计算 输入层
 
-        call cal_input(x_array(:,i),w_input,b(:,1),y(:,1),m,n)
+        call cal_input(x_cesm(:,i),w_input,b(:,1),y(:,1),m,n)
 
 !        write(*,50),'第1层计算 sum (w1 * x) + b1 = ',y(:,1)
 
@@ -248,8 +281,8 @@
 
 ! 计算 输出层
 
-        call cal_output(y(:,o),c,d,n,z)
-        write(*,200) '输出结果 z = ',z
+        call cal_output(y(:,o),c,d,n,y_cesm(i))
+        write(*,200) '输出结果 z = ',y_cesm(i)
 
         enddo
 
@@ -258,37 +291,17 @@
 50      format('',A,/(F10.2))
 100     format('',A,I0,A,I0,A,I0,A,I0,A,/(F10.2))
 150     format('',5(A,I0),A,/(F10.2))
-200     format('',A,/F10.4)
+200     format('',A,/F12.6)
 
         print*,'                     程序运行结束                      '
         print*,'======================================================='
 
 !=========================================================================
-
-        contains
-
-        subroutine logo()
-
-        print*,'             ||                         ||             '
-        print*,'            /||\                       /||\            '
-        print*,'  Torch    / || \         Bridge      / || \   Fortran '
-        print*,'          / /||\ \                   / /||\ \          '
-        print*,'         / / || \ \                 / / || \ \         '
-        print*,' _______/_/_/||\_\_\_______________/_/_/||\_\_\_______ '
-        print*,' ============||=========================||============ '
-        print*,'   ~~~~~~    ||       ~~~~~~~~~~        ||  ~~~~~~     '
-        print*,'  ~~~~~~~~~  ||      ~~~~~~~~~~~~~      || ~~~~~~~~~   '
-        print*,'  ~~~~~~~~~~~||    ~~~~~~~~~~~~~~~~~    || ~~~~~~~~~~~ '
-        print*,'  ~~~~~~~    ||  ~~~~~~~~~~~~~~~~~~~~~~ || ~~~~~~~     '
-        print*,'          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~          '
-        print*,'______________________________________________________ '
-
-        end subroutine logo
+        end subroutine tbf
+ 
 
 
 
 
 
-
-
-      end program bridge
+      end module bridge

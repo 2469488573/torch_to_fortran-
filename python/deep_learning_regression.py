@@ -122,10 +122,10 @@ data_train.to_csv('train.csv',index=False, header=None)
 
 #对因子选择
 #feature = [2,6,10]
-feature = [0,1,2,4,5,6,8,9,10]
+feature = [0,2,6,10]
 #训练时需要加上y
 #feature_for_train=[2,6,10,11]
-feature_for_train=[0,1,2,4,5,6,8,9,10,11]
+feature_for_train=[0,2,6,10,11]
 #统计因子个数
 feature_count = np.size(feature)
 #每层的节点数
