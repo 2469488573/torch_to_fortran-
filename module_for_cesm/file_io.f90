@@ -8,7 +8,6 @@
                 public danzhi
                 public shuzu
                 public filelinenum        
-!                public tongyong
                 public weiducanshu
                 public array_1d
                 public array_2d
@@ -40,8 +39,8 @@
                 open(unit=10,file=filename)
                 read(10,100) var
 100             format(F8.4) 
-                print*,trim(filename)
-                print*,var
+!                print*,trim(filename)
+!                print*,var
         end subroutine danzhi
 
         subroutine array_1d(filename,n,var)
@@ -52,8 +51,8 @@
                 real                :: var(n)
                 open(unit =15,file = filename)
                 read(15,*) (var(i),i = 1,n)
-                print*,trim(filename)
-                print*,var
+!                print*,trim(filename)
+!                print*,var
 
         end subroutine array_1d
 
@@ -65,8 +64,8 @@
                 real                :: var(n,m)
                 open(unit =16,file = filename)
                 read(16,*) ((var(i,j),j=1,m),i = 1,n)
-                print*,trim(filename)
-                print*,var
+!                print*,trim(filename)
+!                print*,var
 
         end subroutine array_2d
 
@@ -84,8 +83,8 @@
                         enddo
                 enddo
 
-                print*,trim(filename)
-                print*,var
+!                print*,trim(filename)
+!                print*,var
 
         end subroutine array_b_dense
 
@@ -103,8 +102,8 @@
                         enddo              
                 enddo
 
-                print*,trim(filename)
-                print*,var
+!                print*,trim(filename)
+!                print*,var
 
         end subroutine array_w_dense
 

@@ -1,5 +1,0 @@
-        program cesm 
-
-        use bridge 
-
-        

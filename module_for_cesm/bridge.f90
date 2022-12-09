@@ -125,19 +125,17 @@
 
 !给可变数组分配内存
 
-        allocate(w(n,m,o),stat=error)
-!        print*,'w allocate flag = ',error!检查是否分配成功，error =0表示成功
+        allocate(w(n,m,o),stat = error)
         allocate(x(m),stat = error)
 
-        allocate(b(n,o))
+        allocate(b(n,o),stat = error)
 
-        allocate(c(n))
+        allocate(c(n),stat = error)
 
-        allocate(y(n,o+1))
+        allocate(y(n,o+1),stat = error)
 
-        allocate( w_input(n,m),stat=error)
+        allocate( w_input(n,m),stat = error)
 
-!        print*,'w_input flag = ', error
 
 !最初赋值，防止内存错误,先用隐式构造一维数组，然后再改成多维数组
 
@@ -166,47 +164,25 @@
 
         !输入w_input
         call array_2d(filename_w1,n,m,w_input)
-        do i = 1,n
-                do j = 1,m
-                        print*,i,'节点',j,'因子','w_input',w_input(i,j)
-                enddo
-        enddo
+
         !输入b_input
         call array_1d(filename_b1,n,b(:,1))
-        print*,'b_input',b
 
      !----------------------------------------------------------------- 
 
         !输入w_dense (存在问题)
         call array_w_dense(filename_w,n,n,o-1,w(:,:,2:) )
 
-!        check w
-        do k = 1,o
-                do i = 1,n
-                        do j = 1,n
-                                print*,k,'层',i,'节点',j,'因子',w(i,j,k)
-                        enddo
-                enddo
-        enddo
-
         !输入b_dense
         call array_b_dense(filename_b,n,o-1,b(:,2:))
-
-!       check b
-        do k = 1,o
-                do i = 1,n
-                        print*,k,'层',i,'节点',b(i,k)
-                enddo
-        enddo
 
      !----------------------------------------------------------------- 
 
         !输入w_output 或者叫c
         call array_1d(filename_c,n,c)
-        print*,'c',c
+
         !输入b_output 或者叫d
         call danzhi(filename_d,d)
-        print*,'d',d
 
 !模型参数输出结束。        
 !=========================================================================
@@ -298,10 +274,5 @@
 
 !=========================================================================
         end subroutine tbf
- 
-
-
-
-
 
       end module bridge
