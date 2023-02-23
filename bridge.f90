@@ -206,7 +206,7 @@
 
         call cal_input(x_array(:,i),w_input,b(:,1),y(:,1),m,n)
 
-!        write(*,50),'第1层计算 sum (w1 * x) + b1 = ',y(:,1)
+        write(*,50),'第1层计算 sum (w1 * x) + b1 = ',y(:,1)
 
 ! 计算 激活函数
 
@@ -217,7 +217,7 @@
 
         call cal_jihuo(y(:,1),n,function_kind,y(:,1))
 
-!       write(*,50),'第1层结束 h1 = relu( sum ( w1 * x ) + b1 ) = ',y(:,1)
+       write(*,50),'第1层结束 h1 = relu( sum ( w1 * x ) + b1 ) = ',y(:,1)
 
 ! 计算 中间层
 ! w的第一层和第二层维数、是不一样的，引入w1，而不用w(:,:,1),为了w下标和b保持一致
@@ -239,10 +239,10 @@
         do k = 2,o
 
         call cal_dense(y(:,k-1),w(:,:,k),b(:,k),y(:,k),n,n)
-!        write(*,100)'第',k,'层计算 sum ( w',k,' * h',k-1,') + b',k,' = ',y(:,k)
+        write(*,100)'第',k,'层计算 sum ( w',k,' * h',k-1,') + b',k,' = ',y(:,k)
 
         call cal_jihuo(y(:,k),n,function_kind,y(:,k))
-!        write(*,150),'第',k,'层结束 h',k,' = relu(sum( w',k,' * h',k-1,') + b',k,' ) = ',y(:,k)
+        write(*,150),'第',k,'层结束 h',k,' = relu(sum( w',k,' * h',k-1,') + b',k,' ) = ',y(:,k)
 
         enddo
 

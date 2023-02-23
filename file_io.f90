@@ -8,7 +8,6 @@
                 public danzhi
                 public shuzu
                 public filelinenum        
-!                public tongyong
                 public weiducanshu
                 public array_1d
                 public array_2d
@@ -20,7 +19,7 @@
 !从文件中读取m,n,o
                 character(len = 100),intent(in) ::filename
                 integer,intent(inout)      ::  n,m,o 
-                open(unit=13,file=filename)
+                open(unit=13,file=filename,position='rewind')
                 read(13,*) 
                 read(13,*)
                 read(13,*)
@@ -30,6 +29,7 @@
                 read(13,*)
                 read(13,*), o
  
+                close(13)
 
         end subroutine weiducanshu
 
@@ -37,7 +37,7 @@
                 !从文件filename中，读取一个数到var中
                 character(len = 100),intent(in) ::filename
                 real      ::  var 
-                open(unit=10,file=filename)
+                open(unit=10,file=filename,position = 'rewind')
                 read(10,100) var
 100             format(F8.4) 
                 print*,trim(filename)
@@ -50,7 +50,7 @@
                 character(len = 100),intent(in)  :: filename 
                 integer             :: i
                 real                :: var(n)
-                open(unit =15,file = filename)
+                open(unit =15,file = filename,position = 'rewind')
                 read(15,*) (var(i),i = 1,n)
                 print*,trim(filename)
                 print*,var
@@ -76,7 +76,7 @@
                 character(len = 100),intent(in)  :: filename 
                 integer             :: i,j
                 real                :: var(n,o)
-                open(unit =17,file = filename)
+                open(unit =17,file = filename,position = 'rewind')
 
                 do i = 1,o
                         do j = 1, n 
@@ -95,7 +95,7 @@
                 character(len = 100),intent(in)  :: filename 
                 integer             :: i,j,k
                 real                :: var(n,m,o)
-                open(unit =18,file = filename)
+                open(unit =18,file = filename,position = 'rewind')
 
                 do k = 1,o
                         do i = 1,n
@@ -118,7 +118,7 @@
                 character(len = 100),intent(in)  :: filename
                 integer             :: i,j 
                 real                :: var(hangshu,lieshu)
-                open(unit =11,file = filename)
+                open(unit =11,file = filename,position = 'rewind')
                 !read(11,100) (var(i,j),i = 1,hangshu)
                 do i =1,hangshu
                         do j =1,lieshu
@@ -134,7 +134,7 @@
         integer function filelinenum(a)
                 integer ios
                 character a*100
-                open(22,file=trim(a))
+                open(22,file=trim(a),position = 'rewind')
                 filelinenum=0
                 do
                         read(22,*,iostat=ios)

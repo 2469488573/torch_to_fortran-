@@ -31,6 +31,10 @@ xshell use utf-8
 第六步：将*.txt 传输到torch_bridge_fortran 文件夹中
 之后的操作留给fortran程序来解决。
 
+-------------------------------------------------------------------
+进一步优化计划
+我觉得得对训练质量进行控制，不然什么结果都往里面放的话，fortran再调用了就会很麻烦。
+
 
 这个示例程序，用ERA5的资料进行深度学习训练边界层高度模型
 主要可以修改的部分是因子选择，训练方法，绘图等等
@@ -439,7 +443,7 @@ target_only = False                 #可以在选择因子时使用
 config = {
     'n_epochs': 3000,                # 最大epochs数
     'batch_size': 300,               # mini-batch 尺寸，batch包含的数据量
-#    'optimizer': 'SGD',              # 优化算法选择 optimization algorithm (optimizer in torch.optim)
+    'optimizer': 'SGD',              # 优化算法选择 optimization algorithm (optimizer in torch.optim)
     'optimizer': 'Adam',  
     'optim_hparas': {                #优化算法的超参数(取决于选取的优化算法)
 #        'lr': 0.001,                 # SGD(随机梯度下降算法)的学习率

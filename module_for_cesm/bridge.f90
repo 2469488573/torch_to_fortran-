@@ -54,7 +54,7 @@
 
         end subroutine logo
 
-        subroutine tbf(ncol,m_cesm ,x_cesm,y_cesm )
+        subroutine tbf(dirname,ncol,m_cesm ,x_cesm,y_cesm )
 !======================================================================
         !主程序引用mod区域
 
@@ -64,10 +64,9 @@
         use file_io,    only:danzhi,shuzu,filelinenum,weiducanshu,&
                              array_1d,array_2d,array_b_dense,array_w_dense
         !深度学习计算的相关代码
-        use calculation,only:cal_point,cal_output,cal_input,cal_jihuo,cal_dense
-
+        use calculation,only:cal_input,cal_jihuo,cal_dense,cal_output
         ! 主程序定义变量区域
-
+        character(len = 100) :: dirname       !深度学习模型所在路径
         integer              :: m,n,o            !w的维度，分别表示因子数，每层节点数，层数
         integer              :: o_c              !当前计算的层数
         integer              :: i,j,k            !索引
@@ -77,10 +76,9 @@
         real,allocatable     ::w(:,:,:),x(:),b(:,:),c(:),y(:,:),&
                                w_input(:,:)
         real                 :: d,z
-        real                 :: wendu_pingjun
         !文件名字符数组都定义长度为100，文件名不宜过长       
-        character(len = 100) :: dirname ="/data/chengxl/&
-                         pblh_deeplearning/torch_bridge_fortran/python/"
+!       character(len = 100) :: dirname ="/data/chengxl/&
+!                         pblh_deeplearning/torch_bridge_fortran/python/"
         character(len = 100) ::  filename_canshu  ,& 
                                  filename_w1      ,& 
                                  filename_b1      ,& 
@@ -164,9 +162,11 @@
 
         !输入w_input
         call array_2d(filename_w1,n,m,w_input)
-
+        call array_2d(filename_w1,n,m,w_input)
         !输入b_input
         call array_1d(filename_b1,n,b(:,1))
+        call array_1d(filename_b1,n,b(:,1))
+!为了测试多次读写运行两次
 
      !----------------------------------------------------------------- 
 
@@ -200,8 +200,6 @@
 
 
 
-!现在只能手动输入x数组，未来需要实现，x-->z
-!函数的功能，这就需要对下面的代码整合。先输入参数构建好模型，然后再输入x，反复调用模型计算。可以看到下面的模型参数已经完全确定，唯一改变的就是x，将x多维数组放进第一个的x中就可以改变输出的z，需要注意的是输入的是一个x向量。
 !========================================================================
 !新建立一个变量叫x_array，然后对x_array(:,i)进行循环，然后输出z(i)数组
 
@@ -272,6 +270,8 @@
         print*,'                     程序运行结束                      '
         print*,'======================================================='
 
+
+!        print*,"子程序运行结束"
 !=========================================================================
         end subroutine tbf
 
